@@ -13,44 +13,39 @@ import org.bukkit.plugin.java.JavaPlugin;
 public class ItemFinderPlugin extends JavaPlugin {
 
     private SearchEngine searchEngine;
-    private CooldownManager cooldownManager;
+    private CooldownManager cooldowns;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
 
-        searchEngine    = new SearchEngine(this);
-        cooldownManager = new CooldownManager(getConfig().getInt("cooldown-seconds", 5));
+        searchEngine = new SearchEngine(this);
+        cooldowns    = new CooldownManager(getConfig().getInt("cooldown-seconds", 5));
 
-        // /finditem
-        FindItemCommand findItemCommand = new FindItemCommand(this);
-        getCommand("finditem").setExecutor(findItemCommand);
-        getCommand("finditem").setTabCompleter(findItemCommand);
+        FindItemCommand findCmd = new FindItemCommand(this);
+        getCommand("finditem").setExecutor(findCmd);
+        getCommand("finditem").setTabCompleter(findCmd);
 
-        // /itemstats
         getCommand("itemstats").setExecutor(new ItemStatsCommand(this));
 
-        // /itemalert
-        ItemAlertCommand alertCommand = new ItemAlertCommand(this);
-        getCommand("itemalert").setExecutor(alertCommand);
-        getCommand("itemalert").setTabCompleter(alertCommand);
+        ItemAlertCommand alertCmd = new ItemAlertCommand(this);
+        getCommand("itemalert").setExecutor(alertCmd);
+        getCommand("itemalert").setTabCompleter(alertCmd);
 
-        // Listeners
         getServer().getPluginManager().registerEvents(new EnderChestListener(this), this);
         getServer().getPluginManager().registerEvents(new GUIListener(this), this);
 
-        // Tâche périodique des alertes
         int interval = getConfig().getInt("alert-interval-seconds", 60);
         new AlertManager(this).start(interval);
 
-        getLogger().info("ItemFinder activé !");
+        getLogger().info("ItemFinder enabled.");
     }
 
     @Override
     public void onDisable() {
-        getLogger().info("ItemFinder désactivé !");
+        getLogger().info("ItemFinder disabled.");
     }
 
-    public SearchEngine getSearchEngine()       { return searchEngine; }
-    public CooldownManager getCooldownManager() { return cooldownManager; }
+    public SearchEngine getSearchEngine()    { return searchEngine; }
+    public CooldownManager getCooldowns()    { return cooldowns; }
 }

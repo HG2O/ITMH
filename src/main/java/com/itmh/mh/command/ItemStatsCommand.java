@@ -21,19 +21,15 @@ public class ItemStatsCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("itemfinder.stats")) {
-            sender.sendMessage(ChatColor.RED + "❌ Permission refusée.");
+            sender.sendMessage(ChatColor.RED + "No permission.");
             return true;
         }
 
-        sender.sendMessage(ChatColor.AQUA + "📊 Calcul des statistiques en cours...");
-
-        // Snapshot sur le main thread
+        sender.sendMessage(ChatColor.AQUA + "Computing server item stats...");
         List<SearchEngine.InventorySnapshot> snapshots = plugin.getSearchEngine().collectSnapshots();
 
-        // Traitement async
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             Map<String, Integer> counts = new HashMap<>();
-
             for (SearchEngine.InventorySnapshot snap : snapshots) {
                 if (snap.contents() == null) continue;
                 for (ItemStack item : snap.contents()) {
@@ -42,34 +38,23 @@ public class ItemStatsCommand implements CommandExecutor {
                 }
             }
 
-            // Top 10 par quantité décroissante
             List<Map.Entry<String, Integer>> sorted = new ArrayList<>(counts.entrySet());
             sorted.sort((a, b) -> b.getValue() - a.getValue());
-            List<Map.Entry<String, Integer>> top = sorted.subList(0, Math.min(10, sorted.size()));
+            List<Map.Entry<String, Integer>> top10 = sorted.subList(0, Math.min(10, sorted.size()));
 
             plugin.getServer().getScheduler().runTask(plugin, () -> {
-                if (counts.isEmpty()) {
-                    sender.sendMessage(ChatColor.YELLOW + "Aucun item trouvé sur le serveur.");
-                    return;
+                if (counts.isEmpty()) { sender.sendMessage(ChatColor.YELLOW + "No items found."); return; }
+                sender.sendMessage(ChatColor.AQUA + "--- Top items on the server ---");
+                int i = 1;
+                for (Map.Entry<String, Integer> e : top10) {
+                    String medal = i == 1 ? "🥇" : i == 2 ? "🥈" : i == 3 ? "🥉" : ChatColor.GRAY + "#" + i;
+                    sender.sendMessage(medal + " " + ChatColor.WHITE + e.getKey()
+                            + ChatColor.GRAY + " x" + ChatColor.YELLOW + e.getValue());
+                    i++;
                 }
-                sender.sendMessage(ChatColor.AQUA + "━━━ 📊 Top items sur le serveur ━━━");
-                int rank = 1;
-                for (Map.Entry<String, Integer> entry : top) {
-                    String medal = switch (rank) {
-                        case 1 -> "🥇";
-                        case 2 -> "🥈";
-                        case 3 -> "🥉";
-                        default -> ChatColor.GRAY + "#" + rank + " ";
-                    };
-                    sender.sendMessage(medal + " " + ChatColor.WHITE + entry.getKey()
-                            + ChatColor.GRAY + " — " + ChatColor.YELLOW + entry.getValue() + " unité(s)");
-                    rank++;
-                }
-                sender.sendMessage(ChatColor.GRAY + "Types distincts scannés : "
-                        + ChatColor.WHITE + counts.size());
+                sender.sendMessage(ChatColor.GRAY + "Unique types: " + ChatColor.WHITE + counts.size());
             });
         });
-
         return true;
     }
 }

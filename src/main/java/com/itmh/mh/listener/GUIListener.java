@@ -32,7 +32,7 @@ public class GUIListener implements Listener {
         if (!(event.getWhoClicked() instanceof Player player)) return;
 
         String title = event.getView().getTitle();
-        if (!title.contains(ResultsGUI.GUI_TITLE_MARKER)) return;
+        if (!title.contains(ResultsGUI.TITLE_KEY)) return;
 
         event.setCancelled(true);
 
@@ -40,74 +40,54 @@ public class GUIListener implements Listener {
         if (clicked == null || clicked.getType().isAir()) return;
 
         List<ItemSearchResult> results = ResultsGUISession.getResults(player);
-        String query   = ResultsGUISession.getQuery(player);
-        int page       = ResultsGUISession.getPage(player);
-
+        String query = ResultsGUISession.getQuery(player);
+        int page = ResultsGUISession.getPage(player);
         if (results == null || query == null) return;
 
-        int slot       = event.getSlot();
-        int totalPages = (int) Math.ceil(results.size() / 45.0);
+        int slot = event.getSlot();
+        int pages = (int) Math.ceil(results.size() / 45.0);
 
-        // ── Navigation ──
-        if (slot == 45 && page > 0) {
-            ResultsGUI.open(player, results, query, page - 1);
-            return;
-        }
-        if (slot == 53 && page < totalPages - 1) {
-            ResultsGUI.open(player, results, query, page + 1);
-            return;
-        }
+        if (slot == 45 && page > 0) { ResultsGUI.open(player, results, query, page - 1); return; }
+        if (slot == 53 && page < pages - 1) { ResultsGUI.open(player, results, query, page + 1); return; }
 
-        // ── Bouton Refresh (slot 47) ──
         if (slot == 47) {
-            player.sendMessage(ChatColor.AQUA + "🔄 Actualisation de la recherche "
-                    + ChatColor.WHITE + "\"" + query + "\"" + ChatColor.AQUA + "...");
+            player.sendMessage(ChatColor.AQUA + "Refreshing search for " + ChatColor.WHITE + "\"" + query + "\"...");
             player.closeInventory();
-            FindItemCommand.runSearch(plugin, player, query);
+            FindItemCommand.doSearch(plugin, player, query);
             return;
         }
 
-        // ── Clic sur un résultat (slots 0–44) : coordonnées cliquables ──
         if (slot < 45) {
-            int resultIndex = page * 45 + slot;
-            if (resultIndex < 0 || resultIndex >= results.size()) return;
-
-            ItemSearchResult result = results.get(resultIndex);
+            int idx = page * 45 + slot;
+            if (idx >= results.size()) return;
+            ItemSearchResult result = results.get(idx);
             Location loc = result.getLocation();
+            if (loc == null) return;
 
-            if (loc == null) return; // inventaire joueur sans coordonnées fixes
+            ItemSearchResult.LocationType t = result.getLocationType();
+            if (t == ItemSearchResult.LocationType.PLAYER_INVENTORY
+                    || t == ItemSearchResult.LocationType.PLAYER_ENDERCHEST) return;
 
-            // Types containers uniquement (pas les inventaires joueur)
-            ItemSearchResult.LocationType type = result.getLocationType();
-            if (type == ItemSearchResult.LocationType.PLAYER_INVENTORY
-                    || type == ItemSearchResult.LocationType.PLAYER_ENDERCHEST) return;
-
-            sendClickableCoords(player, result, loc);
+            sendCoords(player, result, loc);
         }
     }
 
-    private void sendClickableCoords(Player player, ItemSearchResult result, Location loc) {
+    private void sendCoords(Player player, ItemSearchResult result, Location loc) {
         int x = loc.getBlockX(), y = loc.getBlockY(), z = loc.getBlockZ();
-        String world = loc.getWorld().getName();
-        String teleportCmd = "/tp " + x + " " + y + " " + z;
+        String cmd = "/tp " + x + " " + y + " " + z;
 
-        // Ligne 1 : label
-        TextComponent label = new TextComponent(
-                ChatColor.DARK_AQUA + "📍 " + ChatColor.GRAY + result.getOwnerOrCoords() + " ");
+        TextComponent line = new TextComponent(ChatColor.GRAY + result.getOwnerOrCoords() + "  ");
 
-        // Lien cliquable
-        TextComponent link = new TextComponent(
-                ChatColor.GREEN + "" + ChatColor.BOLD + "[Téléporter]");
-        link.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, teleportCmd));
-        link.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                new ComponentBuilder(ChatColor.GRAY + "Cliquer pour se téléporter\n"
-                        + ChatColor.WHITE + teleportCmd).create()));
+        TextComponent tp = new TextComponent(ChatColor.GREEN + "" + ChatColor.BOLD + "[Teleport]");
+        tp.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd));
+        tp.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                new ComponentBuilder(ChatColor.GRAY + cmd).create()));
 
-        TextComponent copy = new TextComponent(" " + ChatColor.YELLOW + "[Copier]");
-        copy.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, teleportCmd));
+        TextComponent copy = new TextComponent("  " + ChatColor.YELLOW + "[Copy]");
+        copy.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, cmd));
         copy.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                new ComponentBuilder(ChatColor.GRAY + "Copier la commande dans le chat").create()));
+                new ComponentBuilder(ChatColor.GRAY + "Copy to chat bar").create()));
 
-        player.spigot().sendMessage(label, link, copy);
+        player.spigot().sendMessage(line, tp, copy);
     }
 }

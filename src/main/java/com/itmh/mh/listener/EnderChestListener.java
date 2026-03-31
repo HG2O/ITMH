@@ -14,9 +14,7 @@ import java.util.UUID;
 public class EnderChestListener implements Listener {
 
     private final ItemFinderPlugin plugin;
-
-    // Cache des ender chests des joueurs hors-ligne
-    private static final Map<UUID, ItemStack[]> enderChestCache = new HashMap<>();
+    private static final Map<UUID, ItemStack[]> cache = new HashMap<>();
 
     public EnderChestListener(ItemFinderPlugin plugin) {
         this.plugin = plugin;
@@ -24,11 +22,11 @@ public class EnderChestListener implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        Player player = event.getPlayer();
-        enderChestCache.put(player.getUniqueId(), player.getEnderChest().getContents().clone());
+        Player p = event.getPlayer();
+        cache.put(p.getUniqueId(), p.getEnderChest().getContents().clone());
     }
 
     public static Map<UUID, ItemStack[]> getEnderChestCache() {
-        return enderChestCache;
+        return cache;
     }
 }
